@@ -6,48 +6,66 @@ import android.arch.lifecycle.MutableLiveData
 import android.databinding.ObservableField
 import com.canbot.stdlibkt.bean.Repository
 import com.canbot.stdlibkt.mvvm.repo.GitRepoRepository
-import com.canbot.stdlibkt.mvvm.repo.OnRepositoryReadyCallback
+import io.reactivex.Scheduler
+import io.reactivex.android.schedulers.AndroidSchedulers
+import io.reactivex.disposables.CompositeDisposable
+import io.reactivex.disposables.Disposable
+import io.reactivex.observers.DisposableObserver
+import io.reactivex.schedulers.Schedulers
 
 /**
  * Created by tao.liu on 2018/9/26.
  * description this is description
  */
-class MainViewModel : AndroidViewModel {
-        constructor(application: Application) : super(application)
-        //val repoModel:RepoModel = RepoModel()
+class MainViewModel(application: Application) : AndroidViewModel(application) {
+        //constructor(application: Application) : super(application)
+
+        val repoModel: RepoModel = RepoModel()
         val text = ObservableField<String>()
         var isLoading = ObservableField<Boolean>()
         var repositories = MutableLiveData<ArrayList<Repository>>()
-
+        lateinit var disposable: Disposable
+        private val compositeDisposable = CompositeDisposable()
         var gitRepoRepository: GitRepoRepository = GitRepoRepository(NetManager(getApplication()))
-        fun refresh(){
-               /* isLoading.set(true)
-                repoModel.refreshData(object :OnDataReadyCallback{
+        fun refresh() {
+                isLoading.set(true)
+                repoModel.refreshData(object : OnDataReadyCallback {
                         override fun onDataReady(data: String) {
                                 isLoading.set(false)
                                 text.set(data)
                         }
 
-                })*/
+                })
         }
 
-        fun loadRepositories(){
-               /* Log.e(TAG,"加载数据loadRepositories()")
+        fun loadRepositories() {
                 isLoading.set(true)
-                repoModel.getRepositories(object : OnRepositoryReadyCallback{
-                        override fun onDataReady(data: ArrayList<Repository>) {
-                                isLoading.set(false)
-                                repositories.value = data
-                                Log.e(TAG,"加载成功$repositories")
+                compositeDisposable += gitRepoRepository
+                        .getRepositories()
+                        .subscribeOn(Schedulers.newThread())
+                        .observeOn(AndroidSchedulers.mainThread())
+                        .subscribeWith(object : DisposableObserver<ArrayList<Repository>>() {
+                        override fun onError(e: Throwable) {
+                                //if some error happens in our data layer our app will not crash, we will
+                                // get error here
                         }
-                })*/
-                isLoading.set(true)
-                gitRepoRepository.getRepositories(object : OnRepositoryReadyCallback {
-                        override fun onDataReady(data: ArrayList<Repository>) {
-                                isLoading.set(false)
+
+                        override fun onNext(data: ArrayList<Repository>) {
                                 repositories.value = data
+                        }
+
+                        override fun onComplete() {
+                                isLoading.set(false)
                         }
                 })
+
+        }
+
+        override fun onCleared() {
+                super.onCleared()
+                if (!compositeDisposable.isDisposed) {
+                        compositeDisposable.dispose()
+                }
         }
 
         companion object {
