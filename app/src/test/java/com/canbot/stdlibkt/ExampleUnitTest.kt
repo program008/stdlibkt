@@ -3,6 +3,7 @@ package com.canbot.stdlibkt
 import org.junit.Test
 
 import org.junit.Assert.*
+import kotlin.properties.Delegates
 
 /**
  * Example local unit test, which will execute on the development machine (host).
@@ -31,4 +32,30 @@ class ExampleUnitTest {
         }
 
         private fun isOld(age: Int): Boolean = age > 20
+
+        @Test
+        fun delegates(){
+                val person = Person().apply { address = "南京" }
+                person.address = "北京"
+                person.address = "上海"
+                person.address = "广州"
+                println("address is ${person.address}")
+        }
+}
+
+class Person {
+        var address:String by Delegates.notNull()
+        //属性代理Delegates.observable()的使用
+        /*var address: String by Delegates.observable(initialValue = "南京", onChange = { property, oldValue, newValue ->
+                println("property: ${property.name}  oldValue: $oldValue  newValue: $newValue")
+        })*/
+
+        /**
+         * If the callback returns `true` the value of the property is being set to the new value,
+         * and if the callback returns `false` the new value is discarded and the property remains its old value.
+         */
+        /*var address: String by Delegates.vetoable(initialValue = "南京", onChange = { property, oldValue, newValue ->
+                println("property: ${property.name}  oldValue: $oldValue  newValue: $newValue")
+                return@vetoable newValue == "北京"
+        })*/
 }
