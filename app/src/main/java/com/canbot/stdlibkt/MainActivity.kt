@@ -6,6 +6,7 @@ import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
 import android.os.Handler
 import com.canbot.stdlibkt.bean.Repository
+import com.canbot.stdlibkt.commonshapebtn.CommonShapeButtonActivity
 import com.canbot.stdlibkt.databinding.ActivityMainBinding
 import com.canbot.stdlibkt.mvvm.Main2Activity
 import com.canbot.stdlibkt.mvvm.Main3Activity
@@ -27,5 +28,6 @@ class MainActivity : AppCompatActivity() {
                         binding.executePendingBindings()}, 2000)
 
                 button.setOnClickListener { view -> startActivity(Intent(this, Main3Activity::class.java)) }
+                common.setOnClickListener { view -> startActivity(Intent(this,CommonShapeButtonActivity::class.java)) }
         }
 }
