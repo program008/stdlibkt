@@ -41,6 +41,17 @@ class ExampleUnitTest {
                 person.address = "广州"
                 println("address is ${person.address}")
         }
+
+        @Test
+        fun test(){
+                val str:String = "let,also,run,with,apply"
+                val result = str.also {
+                        println(this)
+                        println(it)
+                        28
+                }
+                println(result)
+        }
 }
 
 class Person {
