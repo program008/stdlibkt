@@ -52,6 +52,18 @@ class ExampleUnitTest {
                 }
                 println(result)
         }
+
+        @Test
+        fun test2(){
+               /* val text = "what's the weather like in beijing"
+                val ins = text.split("in".toRegex(), 2).toTypedArray()
+                for (i in ins.indices) {
+                        println("ExampleUnitTest" + ins[i])
+                }*/
+
+                val text = "null"
+                println(!"null".equals(text,true))
+        }
 }
 
 class Person {
