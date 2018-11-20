@@ -1,7 +1,6 @@
 package com.canbot.stdlibkt.mvvm
 
 import android.os.Handler
-import com.canbot.stdlibkt.bean.Repository
 
 /**
  * Created by tao.liu on 2018/9/26.

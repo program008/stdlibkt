@@ -1,6 +1,5 @@
 package com.canbot.stdlibkt.mvvm.repo
 
-import android.util.Log
 import com.canbot.stdlibkt.bean.Repository
 import com.canbot.stdlibkt.mvvm.NetManager
 import io.reactivex.Observable

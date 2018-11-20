@@ -4,9 +4,7 @@ import android.databinding.DataBindingUtil
 import android.os.Bundle
 import android.support.v7.app.AppCompatActivity
 import com.canbot.moshi.databinding.ActivityMainBinding
-import com.squareup.moshi.JsonAdapter
 import com.squareup.moshi.Moshi
-import com.squareup.moshi.Types
 
 class MainActivity : AppCompatActivity() {
         lateinit var binding: ActivityMainBinding

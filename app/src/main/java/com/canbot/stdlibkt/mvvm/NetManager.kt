@@ -2,7 +2,6 @@ package com.canbot.stdlibkt.mvvm
 
 import android.content.Context
 import android.net.ConnectivityManager
-import com.canbot.stdlibkt.App
 
 /**
  * Created by tao.liu on 2018/9/27.

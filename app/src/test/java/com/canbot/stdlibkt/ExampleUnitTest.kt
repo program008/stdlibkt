@@ -3,6 +3,7 @@ package com.canbot.stdlibkt
 import org.junit.Test
 
 import org.junit.Assert.*
+import java.util.regex.Pattern
 import kotlin.properties.Delegates
 
 /**
@@ -63,6 +64,15 @@ class ExampleUnitTest {
 
                 val text = "null"
                 println(!"null".equals(text,true))
+        }
+
+        @Test
+        fun test4(){
+                val str = "what is the weather";
+                val regular90 = "^.*(the weather|the temperature).*(in).*$"
+                val pattern90:Pattern = Pattern.compile(regular90)
+                var find = pattern90.matcher(str).find()
+                println("是否匹配："+find)
         }
 }
 

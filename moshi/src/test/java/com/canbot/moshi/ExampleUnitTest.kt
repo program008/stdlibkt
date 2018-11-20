@@ -1,7 +1,6 @@
 package com.canbot.moshi
 
 import com.squareup.moshi.JsonAdapter
-import com.squareup.moshi.JsonReader
 import com.squareup.moshi.Moshi
 import org.junit.Test
 

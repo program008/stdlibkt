@@ -7,7 +7,7 @@
     <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <application
-        android:name=".App"
+        android:name="com.canbot.stdlibkt.App"
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
@@ -15,18 +15,18 @@
         android:supportsRtl="true"
         android:theme="@style/AppTheme"
         tools:ignore="GoogleAppIndexingWarning">
-        <activity android:name=".MainActivity">
+        <activity android:name="com.canbot.stdlibkt.MainActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
 
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
-        <activity android:name=".mvvm.Main2Activity">
+        <activity android:name="com.canbot.stdlibkt.mvvm.Main2Activity">
         </activity>
-        <activity android:name=".mvvm.Main3Activity">
+        <activity android:name="com.canbot.stdlibkt.mvvm.Main3Activity">
         </activity>
-        <activity android:name=".commonshapebtn.CommonShapeButtonActivity"/>
+        <activity android:name="com.canbot.stdlibkt.commonshapebtn.CommonShapeButtonActivity"/>
     </application>
 
 </manifest>

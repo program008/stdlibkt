@@ -6,7 +6,6 @@ import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
 import com.canbot.stdlibkt.R
 import com.canbot.stdlibkt.databinding.ActivityMain2Binding
-import kotlinx.android.synthetic.main.activity_main2.*
 
 class Main2Activity : AppCompatActivity() {
         lateinit var binding: ActivityMain2Binding
