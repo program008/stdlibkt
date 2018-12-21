@@ -2,7 +2,12 @@ package com.canbot.coroutinekt
 
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.*
+import kotlinx.coroutines.selects.select
 import org.junit.Test
+import java.io.IOException
+import java.util.ArrayList
+import kotlin.random.Random
+import kotlin.system.measureTimeMillis
 
 /**
  * Created by tao.liu on 2018/12/20.
@@ -546,5 +551,744 @@ class CoroutinesUnitTest {
                 }
                 jobs.forEach { it.join() }
         }
+
+        // 组合挂起函数
+        /**
+         * 默认顺序调用
+         */
+        @Test
+        fun test29() = runBlocking<Unit> {
+                val time = measureTimeMillis {
+                        val one = doSomethingUsefulOne()
+                        val two = doSomethingUsefulTwo()
+                        println("The answer is ${one + two}")
+                }
+                println("Completed in $time ms")
+        }
+
+        suspend fun doSomethingUsefulOne(): Int {
+                delay(1000L) // 假设我们在这里做了些有用的事
+                return 13
+        }
+
+        suspend fun doSomethingUsefulTwo(): Int {
+                delay(1000L) // 假设我们在这里也做了一些有用的事
+                return 29
+        }
+
+        /**
+         * 使用async并发
+         */
+        @Test
+        fun test30() = runBlocking<Unit> {
+                val time = measureTimeMillis {
+                        val one = async { doSomethingUsefulOne() }
+                        val two = async { doSomethingUsefulTwo() }
+                        println("The answer is ${one.await() + two.await()}")
+                }
+                println("Completed in $time ms")
+        }
+
+        /**
+         * 惰性启动的async
+         */
+        @Test
+        fun test31() = runBlocking<Unit> {
+                val time = measureTimeMillis {
+                        val one = async(start = CoroutineStart.LAZY) { doSomethingUsefulOne() }
+                        val two = async(start = CoroutineStart.LAZY) { doSomethingUsefulTwo() }
+                        // 执行一些计算
+                        one.start() // 启动第一个
+                        two.start() // 启动第二个
+                        println("The answer is ${one.await() + two.await()}")
+                }
+                println("Completed in $time ms")
+        }
+
+        /**
+         * 使用 async 的结构化并发
+         * 这种情况下，如果在 concurrentSum 函数内部发生了错误，并且它抛出了一个异常，
+         * 所有在作用域中启动的协程都将会被取消
+         */
+        @Test
+        fun test32() = runBlocking<Unit> {
+                val time = measureTimeMillis {
+                        println("The answer is ${concurrentSum()}")
+                }
+                println("Completed in $time ms")
+        }
+
+        suspend fun concurrentSum(): Int = coroutineScope {
+                val one = async { doSomethingUsefulOne() }
+                val two = async { doSomethingUsefulTwo() }
+                one.await() + two.await()
+        }
+
+        /**
+         * async 风格的函数
+         * 不推荐使用
+         *
+         */
+        @Test
+        fun test33() {// 注意，在这个示例中我们在 `test33` 函数的右边没有加上 `runBlocking`
+                val time = measureTimeMillis {
+                        // 我们可以在协程外面启动异步执行
+                        val one = somethingUsefulOneAsync()
+                        val two = somethingUsefulTwoAsync()
+                        // 但是等待结果必须调用其它的挂起或者阻塞
+                        // 当我们等待结果的时候，这里我们使用 `runBlocking { …… }` 来阻塞主线程
+                        runBlocking {
+                                println("The answer is ${one.await() + two.await()}")
+                        }
+                }
+                println("Completed in $time ms")
+        }
+
+        fun somethingUsefulOneAsync() = GlobalScope.async {
+                /* val i = 1/0
+                 repeat(1000){
+                         delay(100L)
+                         print(it)
+                 }*/
+                doSomethingUsefulOne()
+        }
+
+        fun somethingUsefulTwoAsync() = GlobalScope.async {
+                doSomethingUsefulTwo()
+        }
+
+        /**
+         * 取消始终通过协程的层次结构来进行传递：
+         * 当第一个子协程失败的时候第一个 async 是如何等待父线程被取消的：
+         */
+        @Test
+        fun test34() = runBlocking<Unit> {
+                try {
+                        failedConcurrentSum()
+                } catch (e: ArithmeticException) {
+                        println("Computation failed with ArithmeticException")
+                }
+        }
+
+        suspend fun failedConcurrentSum(): Int = coroutineScope {
+                val one = async<Int> {
+                        try {
+                                delay(Long.MAX_VALUE) // 模拟一个长时间的运算
+                                42
+                        } finally {
+                                println("First child was cancelled")
+                        }
+                }
+                val two = async<Int> {
+                        println("Second child throws an exception")
+                        throw ArithmeticException()
+                }
+                one.await() + two.await()
+        }
+
+        //----------------------------协程上下文与调度器-----------------------------------------
+        /**
+         * 调度器和线程
+         */
+        @Test
+        fun test35() = runBlocking<Unit> {
+                launch {
+                        // 运行在父协程的上下文中，即 runBlocking 主协程
+                        println("main runBlocking      : I'm working in thread ${Thread.currentThread().name}")
+                }
+                launch(Dispatchers.Unconfined) {
+                        // 不受限的——将工作在主线程中
+                        println("Unconfined            : I'm working in thread ${Thread.currentThread().name}")
+                }
+                launch(Dispatchers.Default) {
+                        // 将会获取默认调度器
+                        println("Default               : I'm working in thread ${Thread.currentThread().name}")
+                }
+                launch(newSingleThreadContext("MyOwnThread")) {
+                        // 将使它获得一个新的线程
+                        println("newSingleThreadContext: I'm working in thread ${Thread.currentThread().name}")
+                }
+        }
+
+        /**
+         * 非受限调度器VS受限调度器
+         */
+        @Test
+        fun test36() = runBlocking<Unit> {
+                launch(Dispatchers.Unconfined) {
+                        // 非受限的——将和主线程一起工作
+                        println("Unconfined      : I'm working in thread ${Thread.currentThread().name}")
+                        delay(500)
+                        println("Unconfined      : After delay in thread ${Thread.currentThread().name}")
+                }
+                launch {
+                        // 父协程的上下文，主 runBlocking 协程
+                        println("main runBlocking: I'm working in thread ${Thread.currentThread().name}")
+                        delay(1000)
+                        println("main runBlocking: After delay in thread ${Thread.currentThread().name}")
+                }
+        }
+
+        fun log(msg: String) = println("[${Thread.currentThread().name}] $msg")
+        /**
+         * 调试协程与线程
+         */
+        @Test
+        fun test37() = runBlocking<Unit> {
+                var timeMillis = measureTimeMillis {
+                        val a = async {
+                                log("I'm computing a piece of the answer")
+                                6
+                        }
+                        val b = async {
+                                log("I'm computing another piece of the answer")
+                                7
+                        }
+
+                        log("The answer is ${a.await() * b.await()}")
+                }
+                println("timeMillis $timeMillis")
+
+        }
+
+        /**
+         * 在不同的线程间跳转
+         */
+        @Test
+        fun test38() {
+                newSingleThreadContext("Ctx1").use { ctx1 ->
+                        newSingleThreadContext("Ctx2").use { ctx2 ->
+                                runBlocking(ctx1) {
+                                        log("Started in ctx1")
+                                        withContext(ctx2) {
+                                                log("Working in ctx2")
+                                        }
+                                        log("Back to ctx1")
+                                }
+                        }
+                }
+        }
+
+        /**
+         * 子协程
+         * 当一个协程被其它协程在 CoroutineScope 中启动的时候， 它将通过 CoroutineScope.coroutineContext
+         * 来承袭上下文，并且这个新协程的 Job 将会成为父协程任务的 子 任务。当一个父协程被取消的时候，所有它的子协程也会被递归的取消。
+         * 然而，当 GlobalScope 被用来启动一个协程时，它与作用域无关且是独立被启动的。
+         */
+        @Test
+        fun test39() = runBlocking<Unit> {
+                // 启动一个协程来处理某种传入请求（request）
+                val request = launch {
+                        // 孵化了两个子任务, 其中一个通过 GlobalScope 启动
+                        GlobalScope.launch {
+                                println("job1: I run in GlobalScope and execute independently!")
+                                delay(1000)
+                                println("job1: I am not affected by cancellation of the request")
+                        }
+                        // 另一个则承袭了父协程的上下文
+                        launch {
+                                delay(100)
+                                println("job2: I am a child of the request coroutine")
+                                delay(1000)
+                                println("job2: I will not execute this line if my parent request is cancelled")
+                        }
+                }
+                delay(500)
+                request.cancel() // 取消请求（request）的执行
+                delay(1000) // 延迟一秒钟来看看发生了什么
+                println("main: Who has survived request cancellation?")
+        }
+
+        /**
+         * 父协程的职责
+         * 一个父协程总是等待所有的子协程执行结束。
+         * 父协程并不显式的跟踪所有子协程的启动以及不必使用 Job.join 在最后的时候等待它们：
+         */
+        @Test
+        fun test40() = runBlocking<Unit> {
+                // 启动一个协程来处理某种传入请求（request）
+                val request = launch {
+                        repeat(3) { i ->
+                                // 启动少量的子任务
+                                launch {
+                                        delay((i + 1) * 200L) // 延迟200毫秒、400毫秒、600毫秒的时间
+                                        println("Coroutine $i is done")
+                                }
+                        }
+                        println("request: I'm done and I don't explicitly join my children that are still active")
+                }
+                request.join() // 等待请求的完成，包括其所有子协程
+                println("Now processing of the request is complete")
+        }
+
+        /**
+         * 命名协程以用于调试
+         */
+        @Test
+        fun test41() = runBlocking(CoroutineName("main")) {
+                log("Started main coroutine")
+                // 运行两个后台值计算
+                val v1 = async(CoroutineName("v1coroutine")) {
+                        delay(500)
+                        log("Computing v1")
+                        252
+                }
+                val v2 = async(CoroutineName("v2coroutine")) {
+                        delay(1000)
+                        log("Computing v2")
+                        6
+                }
+                log("The answer for v1 / v2 = ${v1.await() / v2.await()}")
+                /**
+                 * 组合上下文中的元素有时我们需要在协程上下文中定义多个元素。
+                 * 我们可以使用 + 操作符来实现。 比如说，我们可以显式指定一个调度器来启动协程并且同时显式指定一个命名：
+                 */
+                var launch = launch(Dispatchers.Default + CoroutineName("test")) {
+                        println("I'm working in thread ${Thread.currentThread().name}")
+                }
+                println()
+        }
+
+        val threadLocal = ThreadLocal<String?>() // 声明线程局部变量
+        /**
+         * 线程局部数据
+         */
+        @Test
+        fun test42() = runBlocking<Unit> {
+                threadLocal.set("main")
+                println("Pre-main, current thread: ${Thread.currentThread()}, thread local value: '${threadLocal.get()}'")
+                val job = launch(Dispatchers.Default + threadLocal.asContextElement(value = "launch")) {
+                        println("Launch start, current thread: ${Thread.currentThread()}, thread local value: '${threadLocal.get()}'")
+                        yield()
+                        println("After yield, current thread: ${Thread.currentThread()}, thread local value: '${threadLocal.get()}'")
+                }
+                job.join()
+                println("Post-main, current thread: ${Thread.currentThread()}, thread local value: '${threadLocal.get()}'")
+        }
+
+        //-----------------------------异常处理---------------------------------------------
+        /**
+         * 异常的传播
+         */
+        @Test
+        fun test43() = runBlocking {
+                val job = GlobalScope.launch {
+                        println("Throwing exception from launch")
+                        throw IndexOutOfBoundsException() // 我们将在控制台打印 Thread.defaultUncaughtExceptionHandler
+                }
+                job.join()
+                println("Joined failed job")
+                val deferred = GlobalScope.async {
+                        println("Throwing exception from async")
+                        throw ArithmeticException() // 没有打印任何东西，依赖用户去调用等待
+                }
+                try {
+                        deferred.await()
+                        println("Unreached")
+                } catch (e: ArithmeticException) {
+                        println("Caught ArithmeticException")
+                }
+        }
+
+        @Test
+        fun test44() = runBlocking {
+                val handler = CoroutineExceptionHandler { _, exception ->
+                        println("Caught $exception")
+                }
+                val job = GlobalScope.launch(handler) {
+                        throw AssertionError()
+                }
+                val deferred = GlobalScope.async(handler) {
+                        throw ArithmeticException() // 没有打印任何东西，依赖用户去调用 deferred.await()
+                }
+                joinAll(job, deferred)
+        }
+
+        /**
+         * 取消与异常
+         */
+        @Test
+        fun test45() = runBlocking {
+                val job = launch {
+                        val child = launch {
+                                try {
+                                        delay(Long.MAX_VALUE)
+                                } finally {
+                                        println("Child is cancelled")
+                                }
+                        }
+                        yield()
+                        println("Cancelling child")
+                        child.cancel()
+                        child.join()
+                        yield()
+                        println("Parent is not cancelled")
+                }
+                job.join()
+        }
+
+        @Test
+        fun test46() = runBlocking {
+                val handler = CoroutineExceptionHandler { _, exception ->
+                        println("Caught $exception")
+                }
+                val job = GlobalScope.launch(handler) {
+                        launch {
+                                // 第一个子协程
+                                try {
+                                        delay(Long.MAX_VALUE)
+                                } finally {
+                                        withContext(NonCancellable) {
+                                                println("Children are cancelled, but exception is not handled until all children terminate")
+                                                delay(100)
+                                                println("The first child finished its non cancellable block")
+                                        }
+                                }
+                        }
+                        launch {
+                                // 第二个子协程
+                                delay(10)
+                                println("Second child throws an exception")
+                                throw ArithmeticException()
+                        }
+                }
+                job.join()
+        }
+
+        /**
+         * 异常聚合
+         */
+        @Test
+        fun test47() = runBlocking {
+                val handler = CoroutineExceptionHandler { _, exception ->
+                        println("Caught $exception with suppressed ${exception.suppressed.contentToString()}")
+                }
+                val job = GlobalScope.launch(handler) {
+                        launch {
+                                try {
+                                        delay(Long.MAX_VALUE)
+                                } finally {
+                                        throw ArithmeticException()
+                                }
+                        }
+                        launch {
+                                delay(100)
+                                throw IOException()
+                        }
+                        delay(Long.MAX_VALUE)
+                }
+                job.join()
+        }
+
+        /**
+         * 取消异常是透明的并且会在默认情况下解包
+         */
+        @Test
+        fun test48() = runBlocking {
+                val handler = CoroutineExceptionHandler { _, exception ->
+                        println("Caught original $exception")
+                }
+                val job = GlobalScope.launch(handler) {
+                        val inner = launch {
+                                launch {
+                                        launch {
+                                                throw IOException()
+                                        }
+                                }
+                        }
+                        try {
+                                inner.join()
+                        } catch (e: CancellationException) {
+                                println("Rethrowing CancellationException with original cause")
+                                throw e
+                        }
+                }
+                job.join()
+        }
+
+        /**
+         * 监督任务
+         */
+        @Test
+        fun test49() = runBlocking {
+                val supervisor = SupervisorJob()
+                with(CoroutineScope(coroutineContext + supervisor)) {
+                        // 启动第一个子任务--这个示例将会忽略它的异常（不要在实践中这么做！）
+                        val firstChild = launch(CoroutineExceptionHandler { _, _ ->  }) {
+                                println("First child is failing")
+                                throw AssertionError("First child is cancelled")
+                        }
+                        // 启动第二个子任务
+                        val secondChild = launch {
+                                firstChild.join()
+                                // 取消了第一个子任务且没有传播给第二个子任务
+                                println("First child is cancelled: ${firstChild.isCancelled}, but second one is still active")
+                                try {
+                                        delay(Long.MAX_VALUE)
+                                } finally {
+                                        // 但是取消了监督的传播
+                                        println("Second child is cancelled because supervisor is cancelled")
+                                }
+                        }
+                        // 等待直到第一个子任务失败且执行完成
+                        firstChild.join()
+                        println("Cancelling supervisor")
+                        supervisor.cancel()
+                        secondChild.join()
+                }
+        }
+
+        /**
+         * 监督作用域
+         * 对于作用域的并发，supervisorScope 可以被用来替代 coroutineScope 来实现相同的目的。
+         * 它只会单向的传播并且当子任务自身执行失败的时候将它们全部取消。它也会在所有的子任务执行结束前等待，
+         * 就像 coroutineScope 所做的那样。
+         */
+        @Test
+        fun test50() = runBlocking {
+                try {
+                        supervisorScope {
+                                val child = launch {
+                                        try {
+                                                println("Child is sleeping")
+                                                delay(Long.MAX_VALUE)
+                                        } finally {
+                                                println("Child is cancelled")
+                                        }
+                                }
+                                // 使用 yield 来给我们的子任务一个机会来执行打印
+                                yield()
+                                println("Throwing exception from scope")
+                                throw AssertionError()
+                        }
+                } catch(e: AssertionError) {
+                        println("Caught assertion error")
+                }
+        }
+
+        /**
+         * 监督协程中的异常
+         * 常规的任务和监督任务之间的另一个重要区别是异常处理。
+         * 每一个子任务应该通过异常处理机制处理自身的异常。
+         * 这种差异来自于子任务的执行失败不会传播给它的父任务的事实。
+         */
+        @Test
+        fun test51() = runBlocking {
+                val handler = CoroutineExceptionHandler { _, exception ->
+                        println("Caught $exception")
+                }
+                supervisorScope {
+                        val child = launch(handler) {
+                                println("Child throws an exception")
+                                throw AssertionError()
+                        }
+                        println("Scope is completing")
+                }
+                println("Scope is completed")
+        }
+
+        //------------------------------select表达式（实验性的）----------------------------------------------
+        fun CoroutineScope.fizz() = produce<String> {
+                while (true) { // 每300毫秒发送一个 "Fizz"
+                        delay(300)
+                        send("Fizz")
+                }
+        }
+
+        fun CoroutineScope.buzz() = produce<String> {
+                while (true) { // 每500毫秒发送一个 "Buzz!"
+                        delay(500)
+                        send("Buzz!")
+                }
+        }
+
+        suspend fun selectFizzBuzz(fizz: ReceiveChannel<String>, buzz: ReceiveChannel<String>) {
+                select<Unit> { // <Unit> 意味着该 select 表达式不返回任何结果
+                        fizz.onReceive { value ->  // 这是第一个 select 子句
+                                println("fizz -> '$value'")
+                        }
+                        buzz.onReceive { value ->  // 这是第二个 select 子句
+                                println("buzz -> '$value'")
+                        }
+                }
+        }
+        /**
+         * 在通道中select
+         */
+        @Test
+        fun test52()  = runBlocking<Unit> {
+                val fizz = fizz()
+                val buzz = buzz()
+                repeat(7) {
+                        selectFizzBuzz(fizz, buzz)
+                }
+                coroutineContext.cancelChildren() // 取消 fizz 和 buzz 协程
+        }
+        suspend fun selectAorB(a: ReceiveChannel<String>, b: ReceiveChannel<String>): String =
+                select<String> {
+                        a.onReceiveOrNull { value ->
+                                if (value == null)
+                                        "Channel 'a' is closed"
+                                else
+                                        "a -> '$value'"
+                        }
+                        b.onReceiveOrNull { value ->
+                                if (value == null)
+                                        "Channel 'b' is closed"
+                                else
+                                        "b -> '$value'"
+                        }
+                }
+
+        /**
+         * 通道关闭时select
+         */
+        @Test
+        fun test53() = runBlocking<Unit> {
+                val a = produce<String> {
+                        repeat(4) { send("Hello $it") }
+                }
+                val b = produce<String> {
+                        repeat(4) { send("World $it") }
+                }
+                repeat(8) { // 打印最早的八个结果
+                        println(selectAorB(a, b))
+                }
+                coroutineContext.cancelChildren()
+        }
+
+        fun CoroutineScope.produceNumbers(side: SendChannel<Int>) = produce<Int> {
+                for (num in 1..10) { // 生产从 1 到 10 的10个数值
+                        delay(100) // 延迟100毫秒
+                        select<Unit> {
+                                onSend(num) {} // 发送到主通道
+                                side.onSend(num) {} // 或者发送到 side 通道
+                        }
+                }
+        }
+
+        /**
+         * Select 以发送
+         * Select 表达式具有 onSend 子句，可以很好的与选择的偏向特性结合使用。
+         */
+        @Test
+        fun test54() = runBlocking<Unit> {
+                val side = Channel<Int>() // 分配 side 通道
+                launch { // 对于 side 通道来说，这是一个很快的消费者
+                        side.consumeEach { println("Side channel has $it") }
+                }
+                produceNumbers(side).consumeEach {
+                        println("Consuming $it")
+                        delay(250) // 不要着急，让我们正确消化消耗被发送来的数字
+                }
+                println("Done consuming")
+                coroutineContext.cancelChildren()
+        }
+
+        fun CoroutineScope.asyncString(time: Int) = async {
+                delay(time.toLong())
+                "Waited for $time ms"
+        }
+
+        fun CoroutineScope.asyncStringsList(): List<Deferred<String>> {
+                val random = Random(3)
+                return List(12) { asyncString(random.nextInt(1000)) }
+        }
+
+        /**
+         * Select 延迟值
+         * 延迟值可以使用 onAwait 子句查询。
+         */
+        @Test
+        fun test55() = runBlocking<Unit> {
+                val list = asyncStringsList()
+                val result = select<String> {
+                        list.withIndex().forEach { (index, deferred) ->
+                                deferred.onAwait { answer ->
+                                        "Deferred $index produced answer '$answer'"
+                                }
+                        }
+                }
+                println(result)
+                val countActive = list.count { it.isActive }
+                println("$countActive coroutines are still active")
+        }
+        fun CoroutineScope.switchMapDeferreds(input: ReceiveChannel<Deferred<String>>) = produce<String> {
+                var current = input.receive() // 从第一个接收到的延迟值开始
+                while (isActive) { // 循环直到被取消或关闭
+                        val next = select<Deferred<String>?> { // 从这个 select 中返回下一个延迟值或 null
+                                input.onReceiveOrNull { update ->
+                                        update // 替换下一个要等待的值
+                                }
+                                current.onAwait { value ->
+                                        send(value) // 发送当前延迟生成的值
+                                        input.receiveOrNull() // 然后使用从输入通道得到的下一个延迟值
+                                }
+                        }
+                        if (next == null) {
+                                println("Channel was closed")
+                                break // 跳出循环
+                        } else {
+                                current = next
+                        }
+                }
+        }
+
+        fun CoroutineScope.asyncString(str: String, time: Long) = async {
+                delay(time)
+                str
+        }
+
+        /**
+         * 在延迟值通道上切换
+         * 我们现在来编写一个通道生产者函数，它消费一个产生延迟字符串的通道，并等待每个接收的延迟值，
+         * 但它只在下一个延迟值到达或者通道关闭之前处于运行状态。此示例将 onReceiveOrNull 和 onAwait 子句放在同一个 select 中：
+         */
+        @Test
+        fun test56() = runBlocking<Unit> {
+                val chan = Channel<Deferred<String>>() // 测试使用的通道
+                launch { // 启动打印协程
+                        for (s in switchMapDeferreds(chan))
+                                println(s) // 打印每个获得的字符串
+                }
+                chan.send(asyncString("BEGIN", 100))
+                delay(200) // 充足的时间来生产 "BEGIN"
+                chan.send(asyncString("Slow", 500))
+                delay(100) // 不充足的时间来生产 "Slow"
+                chan.send(asyncString("Replace", 100))
+                delay(500) // 在最后一个前给它一点时间
+                chan.send(asyncString("END", 500))
+                delay(1000) // 给执行一段时间
+                chan.close() // 关闭通道……
+                delay(500) // 然后等待一段时间来让它结束
+        }
+
+        //---------------------------共享的可变状态与并发--------------------------------
+
+        suspend fun CoroutineScope.massiveRun(action: suspend () -> Unit) {
+                val n = 100  // 启动的协程数量
+                val k = 1000 // 每个协程重复执行同一动作的次数
+                val time = measureTimeMillis {
+                        val jobs = List(n) {
+                                launch {
+                                        repeat(k) { action() }
+                                }
+                        }
+                        jobs.forEach { it.join() }
+                }
+                println("Completed ${n * k} actions in $time ms")
+        }
+
+        var counter = 0
+
+        @Test
+        fun test_01()  = runBlocking<Unit> {
+                GlobalScope.massiveRun {
+                        counter++
+                }
+                println("Counter = $counter")
+        }
+
+
 
 }
