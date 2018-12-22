@@ -3,9 +3,12 @@ package com.canbot.coroutinekt
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.*
 import kotlinx.coroutines.selects.select
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import org.junit.Test
 import java.io.IOException
 import java.util.ArrayList
+import java.util.concurrent.atomic.AtomicInteger
 import kotlin.random.Random
 import kotlin.system.measureTimeMillis
 
@@ -1278,9 +1281,8 @@ class CoroutinesUnitTest {
                 }
                 println("Completed ${n * k} actions in $time ms")
         }
-
+        //@Volatile 无济于事
         var counter = 0
-
         @Test
         fun test_01()  = runBlocking<Unit> {
                 GlobalScope.massiveRun {
@@ -1289,6 +1291,121 @@ class CoroutinesUnitTest {
                 println("Counter = $counter")
         }
 
+        val mtContext = newFixedThreadPoolContext(2, "mtPool") // 明确地用两个线程自定义上下文
+        @Test
+        fun test_02() = runBlocking<Unit> {
+                CoroutineScope(mtContext).massiveRun { // 在此及以下示例中使用刚才定义的上下文，而不是默认的 Dispatchers.Default
+                        counter++
+                }
+                println("Counter = $counter")
+        }
+
+        var counter2 = AtomicInteger()
+        /**
+         * 线程安全的数据结构
+         */
+        @Test
+        fun test_03() = runBlocking<Unit> {
+                GlobalScope.massiveRun {
+                        counter2.incrementAndGet()
+                }
+                println("Counter = ${counter2.get()}")
+        }
+
+        /**
+         * 以细粒度限制线程
+         * 限制线程 是解决共享可变状态问题的一种方案：对特定共享状态的所有访问权都限制在单个线程中。
+         * 它通常应用于 UI 程序中：所有 UI 状态都局限于单个事件分发线程或应用主线程中。这在协程中很容易实现，通过使用一个单线程上下文：
+         * 这段代码运行非常缓慢，因为它进行了 细粒度 的线程限制。每个增量操作都得使用 withContext 块从多线程
+         * Dispatchers.Default 上下文切换到单线程上下文。
+         */
+        val counterContext = newSingleThreadContext("CounterContext")
+        @Test
+        fun test_04()  = runBlocking<Unit> {
+                GlobalScope.massiveRun { // 使用 DefaultDispathcer 运行每个协程
+                        withContext(counterContext) { // 但是把每个递增操作都限制在此单线程上下文中
+                                counter++
+                        }
+                }
+                println("Counter = $counter")
+        }
+
+        /**
+         * 以粗粒度限制线程
+         * 在实践中，线程限制是在大段代码中执行的，例如：状态更新类业务逻辑中大部分都是限于单线程中。
+         * 下面的示例演示了这种情况， 在单线程上下文中运行每个协程。 这里我们使用 CoroutineScope() 函数来切换协程上下文为 CoroutineScope：
+         * 这段代码运行更快而且打印出了正确的结果。
+         */
+        @Test
+        fun test_05() = runBlocking<Unit> {
+                CoroutineScope(counterContext).massiveRun { // 在单线程上下文中运行每个协程
+                        counter++
+                }
+                println("Counter = $counter")
+        }
+
+        /**
+         * 互斥
+         * 该问题的互斥解决方案：使用永远不会同时执行的 关键代码块 来保护共享状态的所有修改。
+         * 在阻塞的世界中，你通常会为此目的使用 synchronized 或者 ReentrantLock。 在协程中的替代品叫做 Mutex 。
+         * 它具有 lock 和 unlock 方法， 可以隔离关键的部分。关键的区别在于 Mutex.lock() 是一个挂起函数，它不会阻塞线程。
+         * 还有 withLock 扩展函数，可以方便的替代常用的 mutex.lock(); try { …… } finally { mutex.unlock() } 模式：
+         *
+         * 此示例中锁是细粒度的，因此会付出一些代价。但是对于某些必须定期修改共享状态的场景，
+         * 它是一个不错的选择，但是没有自然线程可以限制此状态。
+         */
+        val mutex = Mutex()
+        @Test
+        fun test_06() = runBlocking<Unit> {
+                GlobalScope.massiveRun {
+                        mutex.withLock {
+                                counter++
+                        }
+                }
+                println("Counter = $counter")
+        }
 
 
+        // 这个函数启动一个新的计数器 actor
+        fun CoroutineScope.counterActor() = actor<CounterMsg> {
+                var counter = 0 // actor 状态
+                for (msg in channel) { // 即将到来消息的迭代器
+                        when (msg) {
+                                is IncCounter -> counter++
+                                is GetCounter -> msg.response.complete(counter)
+                        }
+                }
+        }
+
+        /**
+         * Actors
+         * 一个 actor 是由协程、被限制并封装到该协程中的状态以及一个与其它协程通信的 通道 组合而成的一个实体。
+         * 一个简单的 actor 可以简单的写成一个函数， 但是一个拥有复杂状态的 actor 更适合由类来表示。
+         * 有一个 actor 协程构建器，它可以方便地将 actor 的邮箱通道组合到其作用域中（用来接收消息）、
+         * 组合发送 channel 与结果集对象，这样对 actor 的单个引用就可以作为其句柄持有。
+         * 使用 actor 的第一步是定义一个 actor 要处理的消息类。 Kotlin 的密封类很适合这种场景。
+         * 我们使用 IncCounter 消息（用来递增计数器）和 GetCounter 消息（用来获取值）来定义 CounterMsg 密封类。
+         * 后者需要发送回复。CompletableDeferred 通信原语表示未来可知（可传达）的单个值， 因该特征它被用于此处
+         */
+        @Test
+        fun test_07() = runBlocking<Unit> {
+                val counter = counterActor() // 创建该 actor
+                GlobalScope.massiveRun {
+                        counter.send(IncCounter)
+                }
+                // 发送一条消息以用来从一个 actor 中获取计数值
+                val response = CompletableDeferred<Int>()
+                counter.send(GetCounter(response))
+                println("Counter = ${response.await()}")
+                counter.close() // 关闭该actor
+        }
+
+        /**
+         * actor 本身执行时所处上下文（就正确性而言）无关紧要。一个 actor 是一个协程，
+         * 而一个协程是按顺序执行的，因此将状态限制到特定协程可以解决共享可变状态的问题。
+         * 实际上，actor 可以修改自己的私有状态，但只能通过消息互相影响（避免任何锁定）。
+         * actor 在高负载下比锁更有效，因为在这种情况下它总是有工作要做，而且根本不需要切换到不同的上下文。
+         * 注意，actor 协程构建器是一个双重的 produce 协程构建器。一个 actor 与它接收消息的通道相关联，
+         * 而一个 producer 与它发送元素的通道相关联。
+         */
 }
