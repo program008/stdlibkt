@@ -35,7 +35,7 @@ class ExampleUnitTest {
         private fun isOld(age: Int): Boolean = age > 20
 
         @Test
-        fun delegates(){
+        fun delegates() {
                 val person = Person().apply { address = "南京" }
                 person.address = "北京"
                 person.address = "上海"
@@ -44,8 +44,8 @@ class ExampleUnitTest {
         }
 
         @Test
-        fun test(){
-                val str:String = "let,also,run,with,apply"
+        fun test() {
+                val str: String = "let,also,run,with,apply"
                 val result = str.also {
                         println(this)
                         println(it)
@@ -55,29 +55,49 @@ class ExampleUnitTest {
         }
 
         @Test
-        fun test2(){
-               /* val text = "what's the weather like in beijing"
-                val ins = text.split("in".toRegex(), 2).toTypedArray()
-                for (i in ins.indices) {
-                        println("ExampleUnitTest" + ins[i])
-                }*/
+        fun test2() {
+                /* val text = "what's the weather like in beijing"
+                 val ins = text.split("in".toRegex(), 2).toTypedArray()
+                 for (i in ins.indices) {
+                         println("ExampleUnitTest" + ins[i])
+                 }*/
 
                 val text = "null"
-                println(!"null".equals(text,true))
+                println(!"null".equals(text, true))
         }
 
         @Test
-        fun test4(){
+        fun test4() {
                 val str = "what is the weather";
                 val regular90 = "^.*(the weather|the temperature).*(in).*$"
-                val pattern90:Pattern = Pattern.compile(regular90)
+                val pattern90: Pattern = Pattern.compile(regular90)
                 var find = pattern90.matcher(str).find()
-                println("是否匹配："+find)
+                println("是否匹配：" + find)
+        }
+        @Test
+        fun test5() {
+                val mUserName = "name"
+                val mPhotoUrl = null
+                ifNotNull(mUserName, mPhotoUrl) { userName, photoUrl ->
+                        uploadPhoto(userName, photoUrl)
+                }
+        }
+
+        private fun uploadPhoto(userName: String, photoUrl: String) {
+                println(userName + ", " + photoUrl)
+        }
+
+
+}
+
+fun <T1, T2> ifNotNull(value1: T1?, value2: T2?, bothNotNull: (T1, T2) -> (Unit)) {
+        if (value1 != null && value2 != null) {
+                bothNotNull(value1, value2)
         }
 }
 
 class Person {
-        var address:String by Delegates.notNull()
+        var address: String by Delegates.notNull()
         //属性代理Delegates.observable()的使用
         /*var address: String by Delegates.observable(initialValue = "南京", onChange = { property, oldValue, newValue ->
                 println("property: ${property.name}  oldValue: $oldValue  newValue: $newValue")

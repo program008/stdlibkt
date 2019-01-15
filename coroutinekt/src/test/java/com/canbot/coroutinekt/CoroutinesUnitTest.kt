@@ -1399,7 +1399,12 @@ class CoroutinesUnitTest {
                 println("Counter = ${response.await()}")
                 counter.close() // 关闭该actor
         }
-
+        fun testtt(){
+                GlobalScope.launch(Dispatchers.IO)  {
+                        //Logger.e(TAG, "发送的命令$cmd")
+                        //telnet.sendCommand(cmd)
+                }
+        }
         /**
          * actor 本身执行时所处上下文（就正确性而言）无关紧要。一个 actor 是一个协程，
          * 而一个协程是按顺序执行的，因此将状态限制到特定协程可以解决共享可变状态的问题。
