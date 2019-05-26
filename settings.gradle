@@ -1,1 +1,1 @@
-include ':app', ':moshi', ':coroutinekt'
+include ':app', ':moshi', ':coroutinekt', ':kt'
