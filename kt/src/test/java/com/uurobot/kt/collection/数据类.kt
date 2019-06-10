@@ -1,4 +1,4 @@
-package com.uurobot.kt
+package com.uurobot.kt.collection
 
 /**
  *

@@ -1,4 +1,4 @@
-package com.uurobot.kt
+package com.uurobot.kt.collection
 
 /**
  *
@@ -44,7 +44,7 @@ private fun test3() {
 
                 }
         })
-        registerActionListener(object :ActionListener{
+        registerActionListener(object : ActionListener {
                 override fun click(index: Int) {
                         TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
                 }

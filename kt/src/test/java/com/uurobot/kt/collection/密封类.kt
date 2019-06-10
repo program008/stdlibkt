@@ -1,4 +1,4 @@
-package com.uurobot.kt
+package com.uurobot.kt.collection
 
 /**
  *
@@ -19,5 +19,5 @@ fun eval(expr: Expr): Double = when (expr) {
 }
 
 fun main() {
-        eval(Sum(Const(1.0),Sum(Const(2.0),Const(3.0)))).also(::println)
+        eval(Sum(Const(1.0), Sum(Const(2.0), Const(3.0)))).also(::println)
 }
