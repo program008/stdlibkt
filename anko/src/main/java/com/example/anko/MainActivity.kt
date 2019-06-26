@@ -6,7 +6,7 @@ import android.os.Bundle
 import android.view.View
 import org.jetbrains.anko.*
 
-class MainActivity : AppCompatActivity(),AnkoLogger {
+class MainActivity : AppCompatActivity(), AnkoLogger {
         private val log = AnkoLogger(this.javaClass)
         override fun onCreate(savedInstanceState: Bundle?) {
                 super.onCreate(savedInstanceState)
@@ -16,14 +16,13 @@ class MainActivity : AppCompatActivity(),AnkoLogger {
                 //info{"zheshi"}
                 //debug("fjjjj ")
                 //info("")
-
                 //log.error("")
         }
 
         /**
          * 这里使用anko 的intents相关的扩展函数
          */
-        fun nextActivity(view: View){
+        fun nextActivity(view: View) {
 //                val intent = Intent(this, SomeOtherActivity::class.java)
 //                intent.putExtra("id", 5)
 //                intent.setFlag(Intent.FLAG_ACTIVITY_SINGLE_TOP)
@@ -41,13 +40,16 @@ class MainActivity : AppCompatActivity(),AnkoLogger {
 
         }
 
-        fun showToast(){
+        fun showToast() {
                 toast("Hi there!")
                 toast(R.string.app_name)
                 longToast("Wow, such duration")
         }
 
-        fun alerts(){
+        /**
+         * anko dialog
+         */
+        fun alerts() {
                 /*view.snackbar("Hi there!")
                 view.snackbar(R.string.message)
                 view.longSnackbar("Wow, such duration")
