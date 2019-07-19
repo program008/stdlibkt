@@ -11,9 +11,11 @@
             <option value="$PROJECT_DIR$" />
             <option value="$PROJECT_DIR$/anko" />
             <option value="$PROJECT_DIR$/app" />
+            <option value="$PROJECT_DIR$/app2" />
             <option value="$PROJECT_DIR$/coroutinekt" />
             <option value="$PROJECT_DIR$/kt" />
             <option value="$PROJECT_DIR$/moshi" />
+            <option value="$PROJECT_DIR$/scaledemo" />
           </set>
         </option>
         <option name="resolveModulePerSourceSet" value="false" />

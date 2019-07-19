@@ -86,3 +86,11 @@ class Version(val major: Int, val minor: Int) : Comparable<Version> {
                 } else return 0
         }
 }
+
+/*
+        collection sorting
+        1,sort()
+        2,sortBy(),sortedBy()
+        3,sortWith(),sortedWith()
+
+ */

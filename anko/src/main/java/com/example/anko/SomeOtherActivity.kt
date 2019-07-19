@@ -1,11 +1,16 @@
 package com.example.anko
 
 import android.os.Bundle
+import android.provider.Contacts
+import android.provider.Contacts.Intents.UI
+import android.provider.ContactsContract
 import android.support.v7.app.AppCompatActivity
 import android.view.View
 import org.jetbrains.anko.AnkoLogger
+import org.jetbrains.anko.coroutines.experimental.bg
 import org.jetbrains.anko.db.*
 import org.jetbrains.anko.debug
+import org.jetbrains.anko.doAsync
 
 /**
  * 这个activity学习 anko sqlite
@@ -19,14 +24,14 @@ class SomeOtherActivity : AppCompatActivity() ,AnkoLogger{
 
 
         private fun loadAsync() {
-                /*doAsync(Contacts.Intents.UI) {
-                        val result = bg {
-                                database.use {
-                                        // `this` is a SQLiteDatabase instance
-                                }
-                        }
-                        //loadComplete(result)
-                }*/
+//                doAsync(UI) {
+//                        val result = bg {
+//                                database.use {
+//                                        // `this` is a SQLiteDatabase instance
+//                                }
+//                        }
+//                        //loadComplete(result)
+//                }
         }
 
         fun createTable(view: View) {

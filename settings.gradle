@@ -1,1 +1,1 @@
-include ':app', ':moshi', ':coroutinekt', ':kt', ':anko'
+include ':app', ':moshi', ':coroutinekt', ':kt', ':anko', ':app2', ':scaledemo'

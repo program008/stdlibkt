@@ -1,10 +1,12 @@
 package com.example.anko
 
-import android.content.Intent
-import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
+import android.support.v7.app.AppCompatActivity
+import android.util.Log
 import android.view.View
+import kotlinx.android.synthetic.main.activity_main.*
 import org.jetbrains.anko.*
+
 
 class MainActivity : AppCompatActivity(), AnkoLogger {
         private val log = AnkoLogger(this.javaClass)
@@ -17,6 +19,11 @@ class MainActivity : AppCompatActivity(), AnkoLogger {
                 //debug("fjjjj ")
                 //info("")
                 //log.error("")
+
+                /*horizontalScale.setOnScrollListener { scale ->
+                        Log.d("MainActivity", "" + scale)
+                }*/
+
         }
 
         /**
@@ -33,10 +40,12 @@ class MainActivity : AppCompatActivity(), AnkoLogger {
 
 //                startActivity<SomeOtherActivity>("id" to 5)
 
-                startActivity<SomeOtherActivity>(
+                /*startActivity<SomeOtherActivity>(
                         "id" to 5,
                         "city" to "Denpasar"
-                )
+                )*/
+
+                startActivity<Main3Activity>()
 
         }
 
