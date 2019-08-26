@@ -36,4 +36,33 @@ class ExampleUnitTest {
                 val iLow = low.toInt() and 0xff
                 return iHight * 256 + iLow
         }
+
+       @Test
+       fun test3(){
+               val list = mutableListOf("1", "2", "3", "4", "6")
+              /* list.forEach {
+                       if (it == "3"){
+                               list.remove(it)
+                       }
+               }*/
+
+               /*val iterator = list.iterator()
+               while (iterator.hasNext()){
+                       val next = iterator.next()
+                       if (next == "3"){
+                               list.remove(next)
+                       }
+               }*/
+                var y = 0
+               for (index in list.indices) {
+                       if (list[index-y] == "3"){
+                               list.removeAt(index-y)
+                               //y++
+                               return
+                       }
+
+               }
+
+               println(list)
+       }
 }
