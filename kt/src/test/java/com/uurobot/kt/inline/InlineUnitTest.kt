@@ -8,6 +8,7 @@ import org.junit.Test
  */
 
 //当一个 inline 函数中，有多个 lambda 作为参数时，可以在不想内联的 lambda 前使用 noinline 声明
+@Suppress("NOTHING_TO_INLINE")
 inline fun sum(a: Int, b: Int, noinline lambda: (result: Int) -> Unit): Int {
         val r = a + b
         lambda.invoke(r)
